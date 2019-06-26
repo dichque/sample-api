@@ -4,6 +4,8 @@ package restapi
 
 import (
 	"crypto/tls"
+	"github.com/dichque/sample-api/models"
+	"github.com/go-openapi/swag"
 	"net/http"
 
 	errors "github.com/go-openapi/errors"
@@ -15,6 +17,13 @@ import (
 )
 
 //go:generate swagger generate server --target ../../sample-api --name MinimalPetStoreExample --spec ../swagger.yaml
+
+var petList = []*models.Pet{
+	{ID: 0, Name: swag.String("Bobby"), Kind: "dog"},
+	{ID: 1, Name: swag.String("Lola"), Kind: "cat"},
+	{ID: 2, Name: swag.String("Bella"), Kind: "dog"},
+	{ID: 3, Name: swag.String("Maggie"), Kind: "cat"},
+}
 
 func configureFlags(api *operations.MinimalPetStoreExampleAPI) {
 	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
@@ -44,11 +53,20 @@ func configureAPI(api *operations.MinimalPetStoreExampleAPI) http.Handler {
 			return middleware.NotImplemented("operation pet.Get has not yet been implemented")
 		})
 	}
-	if api.PetListHandler == nil {
-		api.PetListHandler = pet.ListHandlerFunc(func(params pet.ListParams) middleware.Responder {
-			return middleware.NotImplemented("operation pet.List has not yet been implemented")
-		})
-	}
+
+	api.PetListHandler = pet.ListHandlerFunc(func(params pet.ListParams) middleware.Responder {
+		if params.Kind == nil {
+			return pet.NewListOK().WithPayload(petList)
+		}
+		var pets []*models.Pet
+		for _, pet := range petList {
+			if *params.Kind == pet.Kind {
+				pets = append(pets, pet)
+			}
+		}
+		return pet.NewListOK().WithPayload(pets)
+	})
+
 
 	api.ServerShutdown = func() {}
 
